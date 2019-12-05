@@ -19,13 +19,13 @@ type Line = (float * float * float * float)
 let intersectTest (line1: Line) (line2: Line) =
   let (l1x1, l1y1, l1x2, l1y2) = line1
   let (l2x1, l2y1, l2x2, l2y2) = line2
-  let determinator = (l1x1 - l1x2) * (l2y1 - l2y2) - (l1y1 - l1y2) * (l2x1 - l2x2)
+  let denominator = (l1x1 - l1x2) * (l2y1 - l2y2) - (l1y1 - l1y2) * (l2x1 - l2x2)
   // printfn "determinator %A" determinator
-  if determinator = 0. then
+  if denominator = 0. then
     NoIntersection
   else
-    let t = ((l1x1 - l2x1) * (l2y1 - l2y2) - (l1y1 - l2y1) * (l2x1 - l2x2)) / determinator
-    let u = -(((l1x1 - l1x2) * (l1y1 - l2y1) - (l1y1 - l1y2) * (l1x1 - l2x1)) / determinator)
+    let t = ((l1x1 - l2x1) * (l2y1 - l2y2) - (l1y1 - l2y1) * (l2x1 - l2x2)) / denominator
+    let u = -(((l1x1 - l1x2) * (l1y1 - l2y1) - (l1y1 - l1y2) * (l1x1 - l2x1)) / denominator)
     // printfn "t: %A, u: %A" t u
     if (t<0. || t>1. || u<0. || u>1.) then
       NoIntersection
@@ -129,19 +129,5 @@ let main argv =
     |> List.sort
 
   printfn "%A" distances
-
-  let mapData1 =
-    walkDistanceMaps.[0]
-    |> Map.toList
-    |> List.map (fun (p, d) -> sprintf "%A: %A" p d)
-    |> String.concat "\n"
-  let mapData2 =
-    walkDistanceMaps.[1]
-    |> Map.toList
-    |> List.map (fun (p, d) -> sprintf "%A: %A" p d)
-    |> String.concat "\n"
-
-  System.IO.File.WriteAllText("path1.txt",mapData1)
-  System.IO.File.WriteAllText("path2.txt",mapData2)
 
   0 // return an integer exit code
