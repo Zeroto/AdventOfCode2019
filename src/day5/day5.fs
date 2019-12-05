@@ -39,27 +39,27 @@ let handleOpcode (memory: int[]) pos =
   let gp = getParameterMode parameterModes
   //printfn "opcode %A, parameterModes %A" opcode parameterModes
   match opcode with
-  | 1 -> 
+  | 1 -> // Addition
     let a = getValue (memory.[pos+1]) (gp 0) memory
     let b = getValue (memory.[pos+2]) (gp 1) memory
     let r = memory.[pos+3]
     let sum = a + b
     memory.[r] <- sum
     MoveForward 4
-  | 2 -> 
+  | 2 -> // Multiply
     let a = getValue (memory.[pos+1]) (gp 0) memory
     let b = getValue (memory.[pos+2]) (gp 1) memory
     let r = memory.[pos+3]
     let mul = a * b
     memory.[r] <- mul
     MoveForward 4
-  | 3 ->
+  | 3 -> // Read
     printf "Please input value: "
     let a = System.Console.ReadLine() |> int
     let r = memory.[pos+1]
     memory.[r] <- a
     MoveForward 2
-  | 4 ->
+  | 4 -> // Write
     let a = getValue (memory.[pos+1]) (gp 0) memory
     printfn "%A" a
     MoveForward 2
