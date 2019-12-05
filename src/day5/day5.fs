@@ -4,6 +4,7 @@ let input = "3,225,1,225,6,6,1100,1,238,225,104,0,1102,72,20,224,1001,224,-1440,
 
 type Result =
   | MoveForward of int
+  | Jump of int
   | Finished
 
 type ParameterMode =
@@ -62,6 +63,38 @@ let handleOpcode (memory: int[]) pos =
     let a = getValue (memory.[pos+1]) (gp 0) memory
     printfn "%A" a
     MoveForward 2
+  | 5 -> // jump if true
+    let a = getValue (memory.[pos+1]) (gp 0) memory
+    let b = getValue (memory.[pos+2]) (gp 1) memory
+    if a > 0 then
+      Jump b
+    else
+      MoveForward 3
+  | 6 -> // jump if false
+    let a = getValue (memory.[pos+1]) (gp 0) memory
+    let b = getValue (memory.[pos+2]) (gp 1) memory
+    if a = 0 then
+      Jump b
+    else
+      MoveForward 3
+  | 7 -> // less than
+    let a = getValue (memory.[pos+1]) (gp 0) memory
+    let b = getValue (memory.[pos+2]) (gp 1) memory
+    let c = memory.[pos+3]
+    if a < b then
+      memory.[c] <- 1
+    else
+      memory.[c] <- 0
+    MoveForward 4
+  | 8 -> // less than
+    let a = getValue (memory.[pos+1]) (gp 0) memory
+    let b = getValue (memory.[pos+2]) (gp 1) memory
+    let c = memory.[pos+3]
+    if a = b then
+      memory.[c] <- 1
+    else
+      memory.[c] <- 0
+    MoveForward 4
   | 99 -> Finished
   | x -> failwith (sprintf "Unknown opcode: %A, pos: %A, memory: %A" x pos memory )
 
@@ -70,6 +103,7 @@ let rec run memory pos =
   match result with
   | Finished -> ()
   | MoveForward x -> run memory (pos+x)
+  | Jump x -> run memory x
 
 [<EntryPoint>]
 let main argv =
