@@ -950,5 +950,5 @@ let main _ =
   //   |> Map.toList
   //   |> List.sumBy (fun (a, _) -> countLength a graph)
 
-  printfn "%A" (findPath "YOU" "SAN" graph2 [] Set.empty |> Option.map (List.length))
+  printfn "%A" (findPath "YOU" "SAN" graph2 [] Set.empty |> Option.map (List.length >> (+) -2))
   0 // return an integer exit code
