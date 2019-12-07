@@ -9,6 +9,7 @@ let testProgram3 = "3,31,3,32,1002,32,10,32,1001,31,-2,31,1007,31,0,33,1002,33,7
 type Result =
   | MoveForward of int
   | Jump of int
+  | WaitForInput
   | Finished
 
 type ParameterMode =
@@ -38,7 +39,7 @@ let getParameterMode (parameterModes: ParameterMode list) index =
   List.tryItem index parameterModes
   |> Option.defaultValue Address
 
-let handleOpcode (input: unit -> string) (output: string -> unit) (memory: int[]) pos =
+let handleOpcode (input: unit -> string option) (output: string -> unit) (memory: int[]) pos log =
   let (opcode, parameterModes) = parseInstruction memory.[pos]
   let gp = getParameterMode parameterModes
   //printfn "opcode %A, parameterModes %A" opcode parameterModes
@@ -58,11 +59,15 @@ let handleOpcode (input: unit -> string) (output: string -> unit) (memory: int[]
     memory.[r] <- mul
     MoveForward 4
   | 3 -> // Read
-    let a = input() |> int
-    printfn "Please input value: %A" a
+    let a = input() |> Option.map int
+    log <| sprintf " in <- %A" a
     let r = memory.[pos+1]
-    memory.[r] <- a
-    MoveForward 2
+    match a with
+    | Some a ->
+      memory.[r] <- a
+      MoveForward 2
+    | None ->
+      WaitForInput
   | 4 -> // Write
     let a = getValue (memory.[pos+1]) (gp 0) memory
     output (string a)
@@ -102,12 +107,14 @@ let handleOpcode (input: unit -> string) (output: string -> unit) (memory: int[]
   | 99 -> Finished
   | x -> failwith (sprintf "Unknown opcode: %A, pos: %A, memory: %A" x pos memory )
 
-let rec run input output memory pos =
-  let result = handleOpcode input output memory pos
+// returns true when program has ended
+let rec run input output memory pos log =
+  let result = handleOpcode input output memory pos log
   match result with
-  | Finished -> ()
-  | MoveForward x -> run input output memory (pos+x)
-  | Jump x -> run input output memory x
+  | Finished -> (true, pos)
+  | MoveForward x -> run input output memory (pos+x) log
+  | WaitForInput -> (false, pos)
+  | Jump x -> run input output memory x log
 
 let createInput input =
   let mutable xs = input
@@ -122,7 +129,7 @@ let swap<'a> (a: 'a[]) p p2 =
     a.[p2] <- t
 
 let getPermutations =
-  let input = seq {0..4} |> Seq.toArray
+  let input = seq {5..9} |> Seq.toArray
   let rec heapsAlgorithm a n =
     if n = 1 then 
       [Array.copy a]
@@ -153,19 +160,49 @@ let main argv =
   getPermutations
   |> List.map (fun ps ->
     printfn "==== %A ====" ps
-    ps
-    |> Array.fold
-      (fun s psv ->
-        let input = createInput [string psv; s]
-        let mutable output = ""
-        let outputf s =
-          printfn "out -> %A" s
-          output <- s
+    let mutable finished = false
+    let mutable ampIndex = 0
+    let mutable result = "0"
+    let inputs = 
+      ps
+      |> Array.map (fun x -> [string x])
+    inputs.[0] <- inputs.[0] @ ["0"]
 
-        run input outputf (Array.copy memory) 0
-        output
-      )
-      "0"
+    let programs = Array.create 5 (Array.copy memory)
+    let ips = Array.create 5 0
+
+    while not finished do
+      let outputf s =
+          printfn "out -> %A" s
+          inputs.[(ampIndex + 1) % 5] <- inputs.[(ampIndex + 1) % 5] @ [s]
+      let inputf () =
+        let input = inputs.[ampIndex] |> List.tryHead
+        if input |> Option.isSome then
+          inputs.[ampIndex] <- inputs.[ampIndex] |> List.tail
+        input
+
+      //printfn "memory %A: %A" ampIndex (programs.[ampIndex] |> Array.map (string) |> String.concat ",")
+      let r = run inputf outputf programs.[ampIndex] ips.[ampIndex] (printfn "%A: %s" ampIndex)
+      if (fst r && ampIndex = 4) then
+        printfn "final output: %A" inputs.[0]
+        result <- inputs.[0] |> List.last
+        finished <- true
+      ips.[ampIndex] <- snd r
+      ampIndex <- (ampIndex + 1) % 5
+    result
+    // ps
+    // |> Array.fold
+    //   (fun s psv ->
+    //     let input = createInput [string psv; s]
+    //     let mutable output = ""
+    //     let outputf s =
+    //       printfn "out -> %A" s
+    //       output <- s
+
+    //     run input outputf (Array.copy memory) 0
+    //     output
+    //   )
+    //   "0"
   )
   |> List.maxBy (int)
   |> printfn "%A"
