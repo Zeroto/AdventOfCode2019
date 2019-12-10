@@ -150,7 +150,7 @@ let main argv =
   let inputf () =
     printf "Give input: "
     System.Console.ReadLine() |> Some
-  let outputf = printfn "%A"
+  let outputf = printfn "out -> %A"
   let mutable finished = false
   let mutable ip = bigint 0
   let mutable relBase = bigint 0
