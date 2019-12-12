@@ -8,6 +8,28 @@ let input = "<x=-10, y=-13, z=7>
 
 let parseRegex = Regex """^<x=(-?\d+), y=(-?\d+), z=(-?\d+)>$"""
 
+let rec find moons pset s =
+  if pset |> Set.contains moons then
+    s
+  else
+    let newSet = pset |> Set.add moons
+    let newState =
+      moons
+      |> Array.map
+        (fun m ->
+          moons
+          |> Array.fold
+            (fun (x,dx) (ox,_) ->
+              (x,dx + (sign (ox-x)))
+            )
+            m
+          |> fun (x,dx) -> (x+dx,dx)
+        )
+    find newState newSet (s+1)
+
+let findRepeat moons =
+  find moons (Set.empty) 0
+
 [<EntryPoint>]
 let main argv =
   let moons =
@@ -34,10 +56,20 @@ let main argv =
             m
           |> fun (x,y,z,dx,dy,dz) -> (x+dx,y+dy,z+dz,dx,dy,dz)
         )
-      printfn "%A" nm
       nm
     )
     moons
   |> Array.sumBy (fun (x,y,z,dx,dy,dz) -> (abs x + abs y + abs z) * (abs dx + abs dy + abs dz))
   |> printfn "%A"
+
+  moons
+  |> Array.map (fun (x,y,z,dx,dy,dz) ->
+    [|(x,dx);(y,dy);(z,dz)|]
+  )
+  |> Array.transpose
+  |> Array.map findRepeat
+  |> printfn "%A"
+
+  // found least common multiple using online calculator
+
   0 // return an integer exit code
