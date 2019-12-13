@@ -1,1 +1,3 @@
 FSharp.Core
+Microsoft.Packaging.Tools.Trimming
+ILLink.Tasks
