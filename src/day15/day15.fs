@@ -25,7 +25,7 @@ let move d (x,y) =
 
 let mutable drawBoardCounter = 0
 let drawBoard (cx, cy) (board: Dictionary<int*int,int>) =
-  if drawBoardCounter % 5 = 0 then
+  if drawBoardCounter % 10 = 0 then
     let (lx, ly) =
       board
       |> Seq.fold 
@@ -71,6 +71,7 @@ let rotateRight =
 [<EntryPoint>]
 let main argv =
   System.Console.Clear()
+  System.Console.CursorVisible <- false
 
   let program =
     input.Split(",")
@@ -140,5 +141,29 @@ let main argv =
     |> List.iter (fun (nx,ny) ->
       openNodes.Enqueue (nx,ny,d+1)
     )
-    ()
+
+  // board is completly mapped. Find longest distance from exit
+  let exitPos = board |> Seq.find (fun kv -> kv.Value = 2)
+  let (exitX, exitY) = exitPos.Key
+  let mutable highestDistance = 0
+  let openNodes = Queue<int * int * int>()
+  let visitedNodes = HashSet<int * int>()
+  openNodes.Enqueue (exitX,exitY,0)
+
+  while openNodes.Count > 0 do
+    let (x,y,d) = openNodes.Dequeue()
+    if d > highestDistance then highestDistance <- d
+    visitedNodes.Add (x,y) |> ignore
+    [North; South; East; West]
+    |> List.map (fun d -> move d (x,y))
+    |> List.filter (fun np ->
+      let s, b = board.TryGetValue np
+      s && (b = 1 || b = 2) && (not <| visitedNodes.Contains np)
+    )
+    |> List.iter (fun (nx,ny) ->
+      openNodes.Enqueue (nx,ny,d+1)
+    )
+
+  printfn "Highest distance from exit = %A" highestDistance
+  System.Console.CursorVisible <- true
   0 // return an integer exit code
