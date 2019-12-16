@@ -25,9 +25,9 @@ let main argv =
   let digits =
     input
     |> Seq.map (string >> System.Int32.Parse)
-    |> Seq.replicate 1
+    |> Seq.replicate 10000
     |> Seq.collect id
-    // |> Seq.skip skip
+    |> Seq.skip skip
     |> Seq.toArray
   
   printfn "Finished building input: %Ams" timer.ElapsedMilliseconds
@@ -43,29 +43,31 @@ let main argv =
 
   //printfn "%s" (patterns |> Array.map (fun x -> x |> Array.map (sprintf "%2d") |> String.concat "") |> String.concat "\n")
 
-  printfn "Finished building patterns: %Ams" timer.ElapsedMilliseconds
+  // printfn "Finished building patterns: %Ams" timer.ElapsedMilliseconds
 
   let length = digits |> Array.length
   let mutable prevIter = timer.ElapsedMilliseconds
   [1..100]
   |> List.fold
     (fun (s: int array) iter ->
-      
-      let output = Array.zeroCreate length
-      for i in 0 .. length-1 do
-        let value =
-          let mutable sum = 0
-          for si in i..length-1 do
-            let patternIndex = ((si+1) / (i+1)) % 4
-            let m = pattern.[patternIndex]
-            sum <- sum + (s.[si]*m)
-          //printfn "%A %A %A" i (pattern |> Seq.take 8 |> Seq.map string |> String.concat ",") value
-          (abs sum) % 10
-        output.[i] <- value
+      for i in length-2 .. -1 .. 0 do
+        s.[i] <- (s.[i+1] + s.[i]) % 10
+
+      // let output = Array.zeroCreate length
+      // for i in 0 .. length-1 do
+      //   let value =
+      //     let mutable sum = 0
+      //     for si in i..length-1 do
+      //       let patternIndex = ((si+1) / (i+1)) % 4
+      //       let m = pattern.[patternIndex]
+      //       sum <- sum + (s.[si]*m)
+      //     //printfn "%A %A %A" i (pattern |> Seq.take 8 |> Seq.map string |> String.concat ",") value
+      //     (abs sum) % 10
+      //   output.[i] <- value
       // printfn "%3d %s" iter (output |> Array.map (fun (_, v) -> sprintf "%2d" v) |> String.concat "")
       printfn "finished iter %A: %dms" iter (timer.ElapsedMilliseconds - prevIter)
       prevIter <- timer.ElapsedMilliseconds
-      output
+      s
     )
     digits
   |> Seq.take 8
