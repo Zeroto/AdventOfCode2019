@@ -12,11 +12,24 @@ let main argv =
     |> Array.map (fun (k,v) -> KeyValuePair(bigint k, v))
     |> Dictionary
 
-  let inputf () = None
+  program.[bigint 0] <- bigint 2
 
-  let output = ResizeArray<char>()
+  let inputf () = 
+    System.Console.Read()
+    |> string
+    |> fun x -> if x = "13" then System.Console.Read() |> string else x
+    // |> fun x -> printf "%A" x; x
+    |> Some
+
+  let mutable prevChar = ""
   let outputf s =
-    output.Add (char (int s))
+    if int s > 120 then
+      printfn "total dust %A" s
+    else
+      printf "%s" (string<| char (int s))
+      if s = "10" && prevChar = "10" then
+        System.Console.SetCursorPosition(0,0)
+      prevChar <- s
 
   let mutable finished = false
   let mutable ip = bigint 0
@@ -28,46 +41,46 @@ let main argv =
     ip <- p
     relBase <- b
 
-  let board = 
-    output 
-    |> Seq.map string 
-    |> String.concat ""
-    |> (fun x -> x.Split("\n"))
-    |> Array.map (fun l -> l |> Seq.toArray)
+  // let board = 
+  //   output 
+  //   |> Seq.map string 
+  //   |> String.concat ""
+  //   |> (fun x -> x.Split("\n"))
+  //   |> Array.map (fun l -> l |> Seq.toArray)
 
-  let board =
-    output
-    |> Seq.fold
-      (fun (x,y,m) p ->
-        if p = char 10 then
-          (0, y+1, m)
-        else
-          (x+1, y, m |> Map.add (x,y) p)
-      )
-      (0,0, Map.empty)
-    |> (fun (_,_,m) -> m)
+  // let board =
+  //   output
+  //   |> Seq.fold
+  //     (fun (x,y,m) p ->
+  //       if p = char 10 then
+  //         (0, y+1, m)
+  //       else
+  //         (x+1, y, m |> Map.add (x,y) p)
+  //     )
+  //     (0,0, Map.empty)
+  //   |> (fun (_,_,m) -> m)
 
-  let intersections =
-    board
-    |> Map.toSeq
-    |> Seq.filter (fun ((x,y), p) ->
-      if p = '#' then
-        let getNeighbour x y =
-          board
-          |> Map.tryFind (x,y)
-          |> Option.defaultValue '.'
-          |> (fun x -> x = '#')
+  // let intersections =
+  //   board
+  //   |> Map.toSeq
+  //   |> Seq.filter (fun ((x,y), p) ->
+  //     if p = '#' then
+  //       let getNeighbour x y =
+  //         board
+  //         |> Map.tryFind (x,y)
+  //         |> Option.defaultValue '.'
+  //         |> (fun x -> x = '#')
 
-        let neighbours =
-          getNeighbour (x-1) y
-          && getNeighbour (x+1) y
-          && getNeighbour x (y+1)
-          && getNeighbour x (y-1)
+  //       let neighbours =
+  //         getNeighbour (x-1) y
+  //         && getNeighbour (x+1) y
+  //         && getNeighbour x (y+1)
+  //         && getNeighbour x (y-1)
           
-        neighbours
-      else
-        false
-    )
+  //       neighbours
+  //     else
+  //       false
+  //   )
 
-  printfn "%A" (intersections |> Seq.sumBy (fun ((x,y),_) -> x*y))
+  //printfn "%A" (intersections |> Seq.sumBy (fun ((x,y),_) -> x*y))
   0 // return an integer exit code
