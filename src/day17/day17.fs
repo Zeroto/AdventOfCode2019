@@ -5,6 +5,9 @@ let input = "1,330,331,332,109,4288,1102,1,1182,15,1102,1479,1,24,1002,0,1,570,1
 
 [<EntryPoint>]
 let main argv =
+  System.Console.Clear()
+  System.Console.CursorVisible <- false
+
   let program =
     input.Split(",")
     |> Array.map bigint.Parse
@@ -26,7 +29,17 @@ let main argv =
     if int s > 120 then
       printfn "total dust %A" s
     else
-      printf "%s" (string<| char (int s))
+      match char (int s) with
+      | '.' -> 
+        System.Console.BackgroundColor <- System.ConsoleColor.Black
+        printf " "
+      | '#' ->
+        System.Console.BackgroundColor <- System.ConsoleColor.White
+        printf " "
+      | '<' | '>' | '^' | 'v' ->
+        System.Console.BackgroundColor <- System.ConsoleColor.Blue
+        printf " "
+      | x -> printf "%s" (string x)
       if s = "10" && prevChar = "10" then
         System.Console.SetCursorPosition(0,0)
       prevChar <- s
@@ -83,4 +96,7 @@ let main argv =
   //   )
 
   //printfn "%A" (intersections |> Seq.sumBy (fun ((x,y),_) -> x*y))
+
+  System.Console.Clear()
+
   0 // return an integer exit code
