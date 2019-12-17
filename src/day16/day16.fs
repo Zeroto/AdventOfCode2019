@@ -75,4 +75,6 @@ let main argv =
   |> String.concat ""
   |> printfn "%A"
 
+  printfn "finished: %dms" (timer.ElapsedMilliseconds)
+
   0 // return an integer exit code
