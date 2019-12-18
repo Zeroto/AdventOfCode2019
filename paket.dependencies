@@ -7,6 +7,7 @@ framework: auto-detect
 nuget FSharp.Core
 nuget Microsoft.Packaging.Tools.Trimming
 nuget ILLink.Tasks
+nuget OptimizedPriorityQueue
 
 group Build
 source https://www.nuget.org/api/v2

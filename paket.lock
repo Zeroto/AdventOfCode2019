@@ -4,6 +4,7 @@ NUGET
   remote: https://api.nuget.org/v3/index.json
     FSharp.Core (4.7)
     Microsoft.Packaging.Tools.Trimming (1.1.0-preview1-26619-01)
+    OptimizedPriorityQueue (4.2)
   remote: https://dotnet.myget.org/F/dotnet-core/api/v3/index.json
     ILLink.Tasks (0.1.5-preview-1841731)
 
