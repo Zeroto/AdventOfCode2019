@@ -214,16 +214,14 @@ let createHash (l1: char list) =
   |> (fun x -> x ^^^ (int l1.Head))
 
 let bfs (allKeys: Map<int, (int * int * int) list>) (startKeys: int list) =
-  let openNodes = SimplePriorityQueue<SearchState>()
-  openNodes.Enqueue({currentKeys = 0; currentPosKeys = startKeys; currentDist = 0}, 0.f)
+  let openNodes = Queue<SearchState>()
+  openNodes.Enqueue({currentKeys = 0; currentPosKeys = startKeys; currentDist = 0})
 
   let seenStates = Dictionary<int list *int, int>()
 
-  let mutable result = None
-  while result = None do
+  let mutable currentMinimum = System.Int32.MaxValue
+  while openNodes.Count > 0 do
     let node = openNodes.Dequeue()
-    // counter <- counter+1
-    // if (counter % 100000 = 0) then printfn "%A" node
 
     let s,st = seenStates.TryGetValue((node.currentPosKeys, node.currentKeys))
     if not s || node.currentDist < st then
@@ -243,12 +241,13 @@ let bfs (allKeys: Map<int, (int * int * int) list>) (startKeys: int list) =
       moves
       |> List.iter (fun (p, (ok, dist, doors)) ->
         let nk = ok ||| node.currentKeys
-        let ns = {currentKeys = nk; currentPosKeys = node.currentPosKeys |> List.map (fun x -> if x = p then ok else x); currentDist = dist + node.currentDist}
-        if nk = 0x3FFFFFF then
-          result <- Some (ns)
-        openNodes.Enqueue(ns, float32 <| dist + node.currentDist)
+        let nd = dist + node.currentDist
+        let ns = {currentKeys = nk; currentPosKeys = node.currentPosKeys |> List.map (fun x -> if x = p then ok else x); currentDist = nd}
+        if nk = 0x3FFFFFF && nd < currentMinimum then
+          currentMinimum <- nd
+        openNodes.Enqueue(ns)
       )
-  result
+  currentMinimum
 
 [<EntryPoint>]
 let main argv =
