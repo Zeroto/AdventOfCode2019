@@ -41,9 +41,9 @@ let input = "###################################################################
 #.#.###.###.#.#####.#######.###.#.###.#.#.###.#.#.#.#.#################.###.#.#.#
 #.#.....#.#.#.....#.......#.#.#.#...#.#.#.#...#.#...#.#.........#.......#.S.#.#.#
 #.#######.#.#####.#######.#.#.#.#####.#.#.#.#.#.#####.#####.###.#.#######.###.#.#
-#.......................#.....#.............#.#.............#.....#...........#.#
-#######################################.@.#######################################
-#...............#.....#.....#.............#.........................D.......#..u#
+#.......................#.....#........@#@..#.#.............#.....#...........#.#
+#################################################################################
+#...............#.....#.....#..........@#@#.........................D.......#..u#
 #.#############.#####.#.#.###.###.#####.#.#.#.#####.#######.###############.#.###
 #.....#.....#...#...#...#.....#.#.#.....#...#....v#.#.....#.#.......#.....#.#.E.#
 #####.#.#####.###.#.#.#########.#.#######.#######.###.###.###.#####.#.#####.#.#.#
@@ -172,7 +172,7 @@ let findOtherKeys width (board: Tile array) (x,y) =
           openNodes.Enqueue (nx, ny, d+1, (pown 2 (int door - int 'A')) ||| ds)
         | _ -> ()
       )
-  results
+  results |> Seq.toList
 
 let rec backtrack allKeys currentPosKey currentKeys =
   if currentKeys |> List.length = 27 then
@@ -196,7 +196,7 @@ let rec backtrack allKeys currentPosKey currentKeys =
 type SearchState = {
   currentDist: int
   currentKeys: int
-  currentPosKey: int
+  currentPosKeys: int list
 }
 
 let containsAll l1 l2 =
@@ -213,49 +213,40 @@ let createHash (l1: char list) =
     0
   |> (fun x -> x ^^^ (int l1.Head))
 
-let bfs (allKeys: Map<int,ResizeArray<int * int * int>>) startKey =
+let bfs (allKeys: Map<int, (int * int * int) list>) (startKeys: int list) =
   let openNodes = SimplePriorityQueue<SearchState>()
-  openNodes.Enqueue({currentKeys = 0; currentPosKey = startKey; currentDist = 0}, 0.f)
+  openNodes.Enqueue({currentKeys = 0; currentPosKeys = startKeys; currentDist = 0}, 0.f)
 
-  let comparer =
-    { new IEqualityComparer<SearchState> with
-      member this.Equals(a,b) =
-        a.currentPosKey = b.currentPosKey
-        && a.currentDist = b.currentDist
-        && a.currentKeys = b.currentKeys
-      member this.GetHashCode(a) =
-        a.currentKeys
-        + (a.currentPosKey <<< 30)
-        ^^^ a.currentDist
-    }
-
-  let seenStates = HashSet<SearchState>(comparer)
-
-  let mutable counter = 0
+  let seenStates = Dictionary<int list *int, int>()
 
   let mutable result = None
   while result = None do
-    counter <- counter+1
     let node = openNodes.Dequeue()
-    if (counter % 10000 = 0) then printfn "%A" node
-    let moves =
-      allKeys
-      |> Map.find node.currentPosKey
-      |> Seq.filter (fun (ok, dist, doors) ->
-        (node.currentKeys &&& ok <> ok) &&
-        (doors &&& node.currentKeys) = doors
-      )
-    if (moves |> Seq.isEmpty) then
-      result <- Some node
-    else
+    // counter <- counter+1
+    // if (counter % 100000 = 0) then printfn "%A" node
+
+    let s,st = seenStates.TryGetValue((node.currentPosKeys, node.currentKeys))
+    if not s || node.currentDist < st then
+      seenStates.[(node.currentPosKeys, node.currentKeys)] <- node.currentDist
+      let moves =
+        node.currentPosKeys
+        |> List.collect (fun p ->
+          allKeys
+          |> Map.find p
+          |> List.filter (fun (ok, dist, doors) ->
+            (node.currentKeys &&& ok <> ok) &&
+            (doors &&& node.currentKeys) = doors
+          )
+          |> List.map (fun x -> (p, x))
+        )
+        
       moves
-      |> Seq.iter (fun (ok, dist, doors) ->
-        let ns = {currentKeys = ok ||| node.currentKeys; currentPosKey = ok; currentDist = dist + node.currentDist}
-        let ex = 
-          seenStates.Contains ns
-        if not ex then
-          seenStates.Add ns |> ignore
-          openNodes.Enqueue(ns, float32 <| dist + node.currentDist)
+      |> List.iter (fun (p, (ok, dist, doors)) ->
+        let nk = ok ||| node.currentKeys
+        let ns = {currentKeys = nk; currentPosKeys = node.currentPosKeys |> List.map (fun x -> if x = p then ok else x); currentDist = dist + node.currentDist}
+        if nk = 0x3FFFFFF then
+          result <- Some (ns)
+        openNodes.Enqueue(ns, float32 <| dist + node.currentDist)
       )
   result
 
@@ -285,13 +276,17 @@ let main argv =
           | x -> failwith (sprintf "Unknown character on board: %A" x)
   )
 
-  let startPosition =
+  let startPositions =
     board
-    |> Array.findIndex (fun t -> t = Start)
-    |> (fun i -> 
+    |> Array.indexed
+    |> Array.filter (fun (_,t) -> t = Start)
+    |> Array.map (fun (i,_) -> 
       (i%width, i/width)
     )
-  board.[(fst startPosition) + (snd startPosition * width)] <- Empty
+
+  startPositions
+  |> Array.iter (fun (x,y) -> board.[x + y * width] <- Empty)
+  
 
   let allKeys =
     ['A' .. lastKey]
@@ -306,10 +301,18 @@ let main argv =
       (pown 2 (int k - int 'A'), otherKeys)
     )
     |> Map.ofList
-    |> Map.add 0 (findOtherKeys width board startPosition)
+    |> (fun m ->
+      startPositions
+      |> Array.indexed
+      |> Array.fold
+        (fun m (i, sp) ->
+          m |> Map.add ((pown 2 i)<<<27) (findOtherKeys width board sp)
+        )
+        m
+    )
 
   let timer = System.Diagnostics.Stopwatch.StartNew()
-  bfs allKeys 0
+  bfs allKeys (startPositions |> Array.indexed |> Array.map (fun (i,_) -> (pown 2 i)<<<27) |> Array.toList)
   |> printfn "%A"
   printfn "%dms" timer.ElapsedMilliseconds
 
