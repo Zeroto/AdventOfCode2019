@@ -183,7 +183,9 @@ let searchPath board =
 
   let mutable found = false
   let mutable resultDistance = System.Int32.MaxValue
+  let mutable counter = 0
   while not found do
+    counter <- counter+1
     let (level, x,y,dist) = openNodes.Dequeue()
     visitedNodes.Add (level, x, y) |> ignore
     let tile = board.[y].[x]
@@ -219,7 +221,7 @@ let searchPath board =
       )
     | _ ->
       failwith (sprintf "Ended up on wall. should not happen: %d %d" x y)
-  resultDistance
+  counter, resultDistance
 
 [<EntryPoint>]
 let main argv =
