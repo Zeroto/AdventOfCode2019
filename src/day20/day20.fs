@@ -148,38 +148,25 @@ let (|PortalChar|_|) (c: char) =
   else
     None
 
-let findPositions (board: Tile array array) tile =
+let findPositions width (board: Tile array) tile =
   board
-  |> Array.fold
-    (fun (y,bs) l ->
-      let (_, ls) =
-        l
-        |> Array.fold 
-          (fun (x, xs) t ->
-            if t = tile then
-              (x+1, (x,y) :: xs)
-            else
-              (x+1, xs)
-          )
-          (0, [])
-      (y+1, bs |> List.append ls)
-    )
-    (0,[])
-  |> snd
+  |> Array.findIndex (fun x -> x = tile)
+  |> (fun i -> (i%width, i/width))
 
 let isPassable level tile =
   match tile with
-  | Wall -> false
   | Empty | InnerPortal _ -> true
-  | Start | Finish -> level = 0
+  | Wall -> false
   | OuterPortal _ -> level > 0
+  | Start | Finish -> level = 0
+  
 
-let searchPath board =
-  let (startX, startY) = findPositions board Start |> List.head
-  let openNodes = Priority_Queue.SimplePriorityQueue<int*int*int*int>() // level x y dist
+let searchPath width board =
+  let (startX, startY) = findPositions width board Start
+  let openNodes = Queue<int*int*int*int>() // level x y dist
   let visitedNodes = HashSet<int*int*int>() // level x y
   
-  openNodes.Enqueue ((0, startX, startY, 0), 0.F)
+  openNodes.Enqueue ((0, startX, startY, 0))
 
   let mutable found = false
   let mutable resultDistance = System.Int32.MaxValue
@@ -188,43 +175,42 @@ let searchPath board =
     counter <- counter+1
     let (level, x,y,dist) = openNodes.Dequeue()
     visitedNodes.Add (level, x, y) |> ignore
-    let tile = board.[y].[x]
+    let tile = board.[x + y*width]
     // printfn "%A %A" (level, x, y, dist) tile
     match tile with
-    | Finish ->
-      resultDistance <- dist
-      found <- true
     | Empty | Start ->
       // add adjacent nodes
-      [(x-1,y); (x+1,y); (x,y-1); (x,y+1)]
-      |> List.iter (fun (nx, ny) ->
-        if isPassable level board.[ny].[nx] && not (visitedNodes.Contains (level, nx, ny)) then
-          openNodes.Enqueue((level, nx, ny, dist+1), float32 (dist+1))
+      [|(x-1,y); (x+1,y); (x,y-1); (x,y+1)|]
+      |> Array.iter (fun (nx, ny) ->
+        if isPassable level board.[nx + ny*width] && not (visitedNodes.Contains (level, nx, ny)) then
+          openNodes.Enqueue((level, nx, ny, dist+1))
       )
     | InnerPortal p ->
       // find other portal
-      let portals = findPositions board (OuterPortal p)
-      let (opx, opy) = portals |> List.head
-      [(opx-1,opy); (opx+1,opy); (opx,opy-1); (opx,opy+1)]
-      |> List.iter (fun (nx, ny) ->
-        if isPassable (level+1) board.[ny].[nx] && not (visitedNodes.Contains (level+1, nx, ny)) then
-          openNodes.Enqueue((level+1, nx, ny, dist+2), float32 (dist+2))
+      let (opx, opy) = findPositions width board (OuterPortal p)
+      [|(opx-1,opy); (opx+1,opy); (opx,opy-1); (opx,opy+1)|]
+      |> Array.iter (fun (nx, ny) ->
+        if isPassable (level+1) board.[nx + ny*width] && not (visitedNodes.Contains (level+1, nx, ny)) then
+          openNodes.Enqueue((level+1, nx, ny, dist+2))
       )
     | OuterPortal p ->
       // find other portal
-      let portals = findPositions board (InnerPortal p)
-      let (opx, opy) = portals |> List.head
-      [(opx-1,opy); (opx+1,opy); (opx,opy-1); (opx,opy+1)]
-      |> List.iter (fun (nx, ny) ->
-        if isPassable (level-1) board.[ny].[nx] && not (visitedNodes.Contains (level-1, nx, ny))  then
-          openNodes.Enqueue((level-1, nx, ny, dist+2), float32 (dist+2))
+      let (opx, opy) = findPositions width board (InnerPortal p)
+      [|(opx-1,opy); (opx+1,opy); (opx,opy-1); (opx,opy+1)|]
+      |> Array.iter (fun (nx, ny) ->
+        if isPassable (level-1) board.[nx + ny*width] && not (visitedNodes.Contains (level-1, nx, ny))  then
+          openNodes.Enqueue((level-1, nx, ny, dist+2))
       )
+    | Finish ->
+      resultDistance <- dist
+      found <- true
     | _ ->
       failwith (sprintf "Ended up on wall. should not happen: %d %d" x y)
   counter, resultDistance
 
 [<EntryPoint>]
 let main argv =
+  let width = input.Split("\r\n").[0].Length
   let board =
     input.Split("\r\n")
     |> Array.mapi (fun y l ->
@@ -240,6 +226,10 @@ let main argv =
       )
       |> Seq.toArray
     )
+    |> Array.collect id
 
-  printfn "%A" (searchPath board)
+  let timer = System.Diagnostics.Stopwatch.StartNew()
+  let result = searchPath width board
+
+  printfn "%A %dms" result timer.ElapsedMilliseconds
   0 // return an integer exit code
