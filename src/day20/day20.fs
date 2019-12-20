@@ -136,7 +136,8 @@ let testInput = "##################
 type Tile =
   | Empty
   | Wall
-  | Portal of char
+  | InnerPortal of char
+  | OuterPortal of char
   | Start
   | Finish
 
@@ -166,19 +167,27 @@ let findPositions (board: Tile array array) tile =
     (0,[])
   |> snd
 
+let isPassable level tile =
+  match tile with
+  | Wall -> false
+  | Empty | InnerPortal _ -> true
+  | Start | Finish -> level = 0
+  | OuterPortal _ -> level > 0
+
 let searchPath board =
   let (startX, startY) = findPositions board Start |> List.head
-  let openNodes = Priority_Queue.SimplePriorityQueue<int*int*int>()
-  let visitedNodes = HashSet<int*int>()
+  let openNodes = Priority_Queue.SimplePriorityQueue<int*int*int*int>() // level x y dist
+  let visitedNodes = HashSet<int*int*int>() // level x y
   
-  openNodes.Enqueue ((startX, startY, 0), 0.F)
+  openNodes.Enqueue ((0, startX, startY, 0), 0.F)
 
   let mutable found = false
   let mutable resultDistance = System.Int32.MaxValue
   while not found do
-    let (x,y,dist) = openNodes.Dequeue()
-    visitedNodes.Add (x,y) |> ignore
+    let (level, x,y,dist) = openNodes.Dequeue()
+    visitedNodes.Add (level, x, y) |> ignore
     let tile = board.[y].[x]
+    // printfn "%A %A" (level, x, y, dist) tile
     match tile with
     | Finish ->
       resultDistance <- dist
@@ -187,17 +196,26 @@ let searchPath board =
       // add adjacent nodes
       [(x-1,y); (x+1,y); (x,y-1); (x,y+1)]
       |> List.iter (fun (nx, ny) ->
-        if board.[ny].[nx] <> Wall && not (visitedNodes.Contains (nx,ny)) then
-          openNodes.Enqueue((nx, ny, dist+1), float32 (dist+1))
+        if isPassable level board.[ny].[nx] && not (visitedNodes.Contains (level, nx, ny)) then
+          openNodes.Enqueue((level, nx, ny, dist+1), float32 (dist+1))
       )
-    | Portal p ->
+    | InnerPortal p ->
       // find other portal
-      let portals = findPositions board (Portal p)
-      let (opx, opy) = portals |> List.find (fun ppos -> ppos <> (x,y))
+      let portals = findPositions board (OuterPortal p)
+      let (opx, opy) = portals |> List.head
       [(opx-1,opy); (opx+1,opy); (opx,opy-1); (opx,opy+1)]
       |> List.iter (fun (nx, ny) ->
-        if board.[ny].[nx] <> Wall && not (visitedNodes.Contains (nx,ny)) then
-          openNodes.Enqueue((nx, ny, dist+2), float32 (dist+2))
+        if isPassable (level+1) board.[ny].[nx] && not (visitedNodes.Contains (level+1, nx, ny)) then
+          openNodes.Enqueue((level+1, nx, ny, dist+2), float32 (dist+2))
+      )
+    | OuterPortal p ->
+      // find other portal
+      let portals = findPositions board (InnerPortal p)
+      let (opx, opy) = portals |> List.head
+      [(opx-1,opy); (opx+1,opy); (opx,opy-1); (opx,opy+1)]
+      |> List.iter (fun (nx, ny) ->
+        if isPassable (level-1) board.[ny].[nx] && not (visitedNodes.Contains (level-1, nx, ny))  then
+          openNodes.Enqueue((level-1, nx, ny, dist+2), float32 (dist+2))
       )
     | _ ->
       failwith (sprintf "Ended up on wall. should not happen: %d %d" x y)
@@ -207,11 +225,11 @@ let searchPath board =
 let main argv =
   let board =
     input.Split("\r\n")
-    |> Array.map (fun l ->
+    |> Array.mapi (fun y l ->
       l
-      |> Seq.map (fun t ->
+      |> Seq.mapi (fun x t ->
         match t with
-        | PortalChar c -> Portal c
+        | PortalChar c -> if x=1 || y=1 || x=109 || y=111 then OuterPortal c else InnerPortal c
         | ' ' | '#' -> Wall
         | '.' -> Empty
         | 'A' -> Start
