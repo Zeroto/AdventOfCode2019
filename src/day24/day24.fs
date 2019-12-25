@@ -116,6 +116,7 @@ let drawBoards iteration (boards: Map<int, Tile array>) =
 
 [<EntryPoint>]
 let main argv =
+  let timer = System.Diagnostics.Stopwatch.StartNew()
   let width = 5
   let height = 5
   let board =
@@ -137,7 +138,7 @@ let main argv =
     |> Map.add 0 board
 
   let rec findFirstDuplicate boards currentMinDepth currentMaxDepth iteration =
-    drawBoards iteration boards
+    //drawBoards iteration boards
     if iteration = 200 then
       boards
     else
@@ -149,4 +150,5 @@ let main argv =
 
 
   printfn "%A" (endBoard |> Map.toSeq |> Seq.sumBy (fun (d, b) -> b |> Array.sumBy (fun t -> if t = Closed then 1 else 0)))
+  printfn "took %dms" timer.ElapsedMilliseconds
   0 // return an integer exit code
